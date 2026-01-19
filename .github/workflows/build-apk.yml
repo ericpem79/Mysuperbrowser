@@ -8,16 +8,31 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v4
         with: { python-version: '3.11' }
-      - run: sudo apt update && sudo apt install -y python3-pip openjdk-17-jdk
+      - run: sudo apt update && sudo apt install -y python3-pip openjdk-17-jdk wget unzip
       - run: pip install cython buildozer
-      # cache NDK & SDK to avoid flaky downloads
-      - uses: actions/cache@v4
+
+      # Pre-install NDK 25b (bypass flaky Google CDN)
+      - name: Cache NDK
+        uses: actions/cache@v4
+        id: ndk-cache
         with:
-          path: |
-            ~/.buildozer/android/platform/android-sdk
-            ~/.buildozer/android/platform/android-ndk-r25b
-          key: ndk-r25b-sdk
-      - run: buildozer android debug
+          path: /opt/android-ndk-r25b
+          key: android-ndk-r25b
+      - name: Install NDK if miss
+        if: steps.ndk-cache.outputs.cache-hit != 'true'
+        run: |
+          wget -q https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
+          unzip -q android-ndk-r25b-linux.zip -d /opt
+          mv /opt/android-ndk-r25b /opt/android-ndk-r25b
+          rm android-ndk-r25b-linux.zip
+
+      # Tell Buildozer where the NDK is
+      - run: |
+          mkdir -p ~/.buildozer/android/platform
+          ln -sf /opt/android-ndk-r25b ~/.buildozer/android/platform/android-ndk-r25b
+          export ANDROID_NDK_HOME=/opt/android-ndk-r25b
+          export PATH=$PATH:$ANDROID_NDK_HOME
+          buildozer android debug
       - uses: actions/upload-artifact@v4
         with:
           name: app-debug
