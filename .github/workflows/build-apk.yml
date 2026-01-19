@@ -10,9 +10,16 @@ jobs:
         with: { python-version: '3.11' }
       - run: sudo apt update && sudo apt install -y python3-pip openjdk-17-jdk
       - run: pip install cython buildozer
-
+      # cache NDK & SDK to avoid flaky downloads
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.buildozer/android/platform/android-sdk
+            ~/.buildozer/android/platform/android-ndk-r25b
+          key: ndk-r25b-sdk
       - run: buildozer android debug
-      - uses: actions/upload-artifact@v4 
+      - uses: actions/upload-artifact@v4
         with:
           name: app-debug
           path: bin/*.apk
+          
